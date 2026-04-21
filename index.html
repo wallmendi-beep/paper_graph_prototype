@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Logic Graph</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="control-panel">
+      <div class="panel-header">
+        <p class="eyebrow">Integrated NLP Pipeline</p>
+        <h1 id="app-title">Document Logic Graph</h1>
+        <p id="app-intro" class="intro"></p>
+      </div>
+
+      <section class="panel-card source-card">
+        <h2>문서 입력</h2>
+        <label class="field">
+          <span>파일 업로드</span>
+          <input id="document-file" type="file" accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+        </label>
+        <label class="field">
+          <span>Google Docs URL</span>
+          <input id="google-docs-url" type="url" placeholder="https://docs.google.com/document/d/...">
+        </label>
+        <div class="action-row">
+          <button id="load-docs-button" type="button" class="secondary">Docs 불러오기</button>
+        </div>
+        <p class="source-meta">Current source: <strong id="source-meta">Manual text</strong></p>
+        <p id="status-bar" class="status-bar" data-tone="muted"></p>
+      </section>
+
+      <label class="field">
+        <span>텍스트 원문</span>
+        <textarea id="paper-input" spellcheck="false"></textarea>
+      </label>
+
+      <div class="action-row">
+        <button id="analyze-button" type="button">전체 분석 실행</button>
+        <button id="load-sample-button" type="button" class="secondary">샘플 로드</button>
+      </div>
+
+      <section class="panel-card">
+        <h2>분석 요약</h2>
+        <dl id="stats-panel" class="stats-grid"></dl>
+      </section>
+
+      <section class="panel-card">
+        <h2>선택 노드 맥락</h2>
+        <div id="context-panel" class="context-panel"></div>
+      </section>
+
+      <section class="panel-card">
+        <h2>논리 점검 결과</h2>
+        <div id="issues-panel" class="context-panel"></div>
+      </section>
+    </aside>
+
+    <main class="visualization-panel">
+      <div class="viz-header">
+        <div>
+          <p class="eyebrow">D3 Radial View</p>
+          <h2>문장-개념 관계 및 충돌 그래프</h2>
+        </div>
+        <div class="legend">
+          <span><i class="legend-dot sentence"></i> Sentence</span>
+          <span><i class="legend-dot token"></i> Token</span>
+          <span><i class="legend-dot bridge"></i> Strong Link</span>
+          <span><i class="legend-dot contradiction"></i> Contradiction</span>
+        </div>
+      </div>
+      <div id="graph-root" class="graph-root"></div>
+    </main>
+  </div>
+
+  <script type="module">
+    import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.3.136/build/pdf.min.mjs";
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.3.136/build/pdf.worker.min.mjs";
+    window.pdfjsLib = pdfjsLib;
+  </script>
+  <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
