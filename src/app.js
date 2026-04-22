@@ -236,8 +236,12 @@ function buildDisplayGraphState() {
  * @returns {void}
  */
 function renderNavigationState() {
-  navBackButton.disabled = selectionIndex <= 0;
-  navForwardButton.disabled = selectionIndex < 0 || selectionIndex >= selectionHistory.length - 1;
+  if (navBackButton) {
+    navBackButton.disabled = selectionIndex <= 0;
+  }
+  if (navForwardButton) {
+    navForwardButton.disabled = selectionIndex < 0 || selectionIndex >= selectionHistory.length - 1;
+  }
 }
 
 /**
@@ -247,7 +251,9 @@ function renderNavigationState() {
  */
 function renderGraph() {
   const { graphModel, highlightedNodeIds, summary } = buildDisplayGraphState();
-  graphSummary.textContent = summary;
+  if (graphSummary) {
+    graphSummary.textContent = summary;
+  }
   renderRadialGraph(graphRoot, graphModel, setContextForNode, { selectedNodeId, highlightedNodeIds });
   renderNavigationState();
 }
@@ -477,23 +483,39 @@ loadSampleButton.addEventListener("click", loadSample);
 loadDocsButton.addEventListener("click", handleGoogleDocsLoad);
 fileInput.addEventListener("change", handleFileSelection);
 input.addEventListener("input", resetPendingSource);
-graphSearchInput.addEventListener("input", (event) => {
-  graphSearchTerm = event.target.value.trim();
-  renderGraph();
-});
-clearSearchButton.addEventListener("click", () => {
-  graphSearchTerm = "";
-  graphSearchInput.value = "";
-  renderGraph();
-});
-contradictionsOnlyInput.addEventListener("change", (event) => {
-  contradictionsOnly = event.target.checked;
-  renderGraph();
-});
-navBackButton.addEventListener("click", () => moveSelection(-1));
-navForwardButton.addEventListener("click", () => moveSelection(1));
-contextPanel.addEventListener("click", handlePanelNavigation);
-issuesPanel.addEventListener("click", handlePanelNavigation);
+if (graphSearchInput) {
+  graphSearchInput.addEventListener("input", (event) => {
+    graphSearchTerm = event.target.value.trim();
+    renderGraph();
+  });
+}
+if (clearSearchButton) {
+  clearSearchButton.addEventListener("click", () => {
+    graphSearchTerm = "";
+    if (graphSearchInput) {
+      graphSearchInput.value = "";
+    }
+    renderGraph();
+  });
+}
+if (contradictionsOnlyInput) {
+  contradictionsOnlyInput.addEventListener("change", (event) => {
+    contradictionsOnly = event.target.checked;
+    renderGraph();
+  });
+}
+if (navBackButton) {
+  navBackButton.addEventListener("click", () => moveSelection(-1));
+}
+if (navForwardButton) {
+  navForwardButton.addEventListener("click", () => moveSelection(1));
+}
+if (contextPanel) {
+  contextPanel.addEventListener("click", handlePanelNavigation);
+}
+if (issuesPanel) {
+  issuesPanel.addEventListener("click", handlePanelNavigation);
+}
 window.addEventListener("resize", rerenderGraph);
 
 document.querySelector("#app-title").textContent = COPY.appTitle;

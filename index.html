@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,9 +19,9 @@
       </div>
 
       <section class="panel-card source-card">
-        <h2>문서 입력</h2>
+        <h2>Document Input</h2>
         <label class="field">
-          <span>파일 업로드</span>
+          <span>Upload File</span>
           <input id="document-file" type="file" accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
         </label>
         <label class="field">
@@ -29,54 +29,54 @@
           <input id="google-docs-url" type="url" placeholder="https://docs.google.com/document/d/...">
         </label>
         <div class="action-row">
-          <button id="load-docs-button" type="button" class="secondary">Docs 불러오기</button>
+          <button id="load-docs-button" type="button" class="secondary">Load Docs</button>
         </div>
         <p class="source-meta">Current source: <strong id="source-meta">Manual text</strong></p>
         <p id="status-bar" class="status-bar" data-tone="muted"></p>
       </section>
 
       <label class="field">
-        <span>텍스트 원문</span>
+        <span>Document Text</span>
         <textarea id="paper-input" spellcheck="false"></textarea>
       </label>
 
       <div class="action-row">
-        <button id="analyze-button" type="button">전체 분석 실행</button>
-        <button id="load-sample-button" type="button" class="secondary">샘플 로드</button>
+        <button id="analyze-button" type="button">Run Full Analysis</button>
+        <button id="load-sample-button" type="button" class="secondary">Load Sample</button>
       </div>
 
       <section class="panel-card">
-        <h2>검토 도구</h2>
+        <h2>Review Tools</h2>
         <label class="field">
-          <span>그래프 검색</span>
-          <input id="graph-search" type="search" placeholder="문장, 개념, 연결 이유 검색">
+          <span>Graph Search</span>
+          <input id="graph-search" type="search" placeholder="Search sentences, concepts, or link reasons">
         </label>
         <div class="action-row">
-          <button id="clear-search-button" type="button" class="secondary">검색 지우기</button>
+          <button id="clear-search-button" type="button" class="secondary">Clear Search</button>
           <label class="toggle-pill">
             <input id="contradictions-only" type="checkbox">
-            <span>충돌 후보만 보기</span>
+            <span>Show Contradictions Only</span>
           </label>
         </div>
         <div class="nav-row">
-          <button id="nav-back-button" type="button" class="secondary">이전 노드</button>
-          <button id="nav-forward-button" type="button" class="secondary">다음 노드</button>
+          <button id="nav-back-button" type="button" class="secondary">Previous Node</button>
+          <button id="nav-forward-button" type="button" class="secondary">Next Node</button>
         </div>
-        <p id="graph-summary" class="source-meta">전체 그래프를 표시 중입니다.</p>
+        <p id="graph-summary" class="source-meta">Showing the full graph.</p>
       </section>
 
       <section class="panel-card">
-        <h2>분석 요약</h2>
+        <h2>Analysis Summary</h2>
         <dl id="stats-panel" class="stats-grid"></dl>
       </section>
 
       <section class="panel-card">
-        <h2>선택 노드 맥락</h2>
+        <h2>Selected Node Context</h2>
         <div id="context-panel" class="context-panel"></div>
       </section>
 
       <section class="panel-card">
-        <h2>논리 점검 결과</h2>
+        <h2>Logic Review Results</h2>
         <div id="issues-panel" class="context-panel"></div>
       </section>
     </aside>
@@ -85,7 +85,7 @@
       <div class="viz-header">
         <div>
           <p class="eyebrow">D3 Radial View</p>
-          <h2>문장-개념 관계 및 충돌 그래프</h2>
+          <h2>Sentence-Concept Links and Contradiction Graph</h2>
         </div>
         <div class="legend">
           <span><i class="legend-dot sentence"></i> Sentence</span>
