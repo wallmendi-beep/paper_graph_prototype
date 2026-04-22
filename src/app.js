@@ -19,12 +19,23 @@ const issuesPanel = document.querySelector("#issues-panel");
 const statsPanel = document.querySelector("#stats-panel");
 const statusBar = document.querySelector("#status-bar");
 const sourceMeta = document.querySelector("#source-meta");
+const graphSearchInput = document.querySelector("#graph-search");
+const clearSearchButton = document.querySelector("#clear-search-button");
+const contradictionsOnlyInput = document.querySelector("#contradictions-only");
+const graphSummary = document.querySelector("#graph-summary");
+const navBackButton = document.querySelector("#nav-back-button");
+const navForwardButton = document.querySelector("#nav-forward-button");
 
 let currentState = null;
 let pendingSource = { label: "Manual text" };
 let analysisWorker = null;
 let activeRequestId = 0;
 let workerTimeoutId = null;
+let selectedNodeId = "";
+let graphSearchTerm = "";
+let contradictionsOnly = false;
+let selectionHistory = [];
+let selectionIndex = -1;
 
 /**
  * Creates a serializable analysis state from raw text.
@@ -79,10 +90,13 @@ function createAnalysisWorker() {
  */
 function applyAnalysisState(nextState) {
   currentState = nextState;
+  selectedNodeId = nextState.defaultContext?.title === "S1" ? "sentence:0" : nextState.parsed.sentenceNodes[0]?.id || nextState.parsed.documentNode.id;
+  selectionHistory = [];
+  selectionIndex = -1;
   renderStats(currentState.graphModel.stats);
-  renderRadialGraph(graphRoot, currentState.graphModel, setContextForNode);
-  renderContextPanel(contextPanel, currentState.defaultContext);
+  setContextForNode(selectedNodeId, true);
   renderIssuePanel(issuesPanel, currentState.analysis);
+  renderGraph();
   setStatus(`Analysis complete: ${currentState.graphModel.stats.sentences} sentences, ${currentState.graphModel.stats.contradictions} contradiction signals.`, "success");
 }
 
@@ -133,17 +147,137 @@ function renderStats(stats) {
 }
 
 /**
+ * Finds a node by id.
+ *
+ * @param {string} nodeId
+ * @returns {object | undefined}
+ */
+function getNodeById(nodeId) {
+  return currentState?.graphModel.nodes.find((node) => node.id === nodeId);
+}
+
+/**
+ * Resolves one-hop related nodes for search and focus highlighting.
+ *
+ * @param {string[]} seedIds
+ * @param {object} graphModel
+ * @returns {Set<string>}
+ */
+function expandRelatedNodeIds(seedIds, graphModel) {
+  const visibleNodeIds = new Set(seedIds);
+  graphModel.links.forEach((link) => {
+    if (visibleNodeIds.has(link.source) || visibleNodeIds.has(link.target)) {
+      visibleNodeIds.add(link.source);
+      visibleNodeIds.add(link.target);
+    }
+  });
+  return visibleNodeIds;
+}
+
+/**
+ * Builds a display graph model based on current filters.
+ *
+ * @returns {{graphModel: object, highlightedNodeIds: Set<string>, summary: string}}
+ */
+function buildDisplayGraphState() {
+  if (!currentState) {
+    return { graphModel: null, highlightedNodeIds: new Set(), summary: "" };
+  }
+  const baseGraph = currentState.graphModel;
+  let visibleNodeIds = new Set(baseGraph.nodes.map((node) => node.id));
+  let summaryParts = ["전체 그래프를 표시 중입니다."];
+
+  if (contradictionsOnly) {
+    const contradictionSentenceIds = new Set();
+    currentState.analysis.contradictionLinks.forEach((link) => {
+      contradictionSentenceIds.add(link.source);
+      contradictionSentenceIds.add(link.target);
+    });
+    visibleNodeIds = expandRelatedNodeIds([...contradictionSentenceIds], baseGraph);
+    summaryParts = [`충돌 후보 관련 노드 ${visibleNodeIds.size}개를 표시 중입니다.`];
+  }
+
+  let highlightedNodeIds = new Set();
+  if (graphSearchTerm) {
+    const term = graphSearchTerm.toLowerCase();
+    const matchedNodeIds = baseGraph.nodes
+      .filter((node) => {
+        const haystacks = [node.label, node.text, node.token, node.type].filter(Boolean).map((value) => String(value).toLowerCase());
+        return haystacks.some((value) => value.includes(term));
+      })
+      .map((node) => node.id);
+    highlightedNodeIds = expandRelatedNodeIds(matchedNodeIds, baseGraph);
+    if (matchedNodeIds.length > 0) {
+      visibleNodeIds = new Set([...visibleNodeIds].filter((nodeId) => highlightedNodeIds.has(nodeId)));
+      summaryParts.push(`검색어 "${graphSearchTerm}"와 연결된 노드 ${visibleNodeIds.size}개를 보여줍니다.`);
+    } else {
+      visibleNodeIds = new Set();
+      summaryParts.push(`검색어 "${graphSearchTerm}"에 맞는 노드를 찾지 못했습니다.`);
+    }
+  }
+
+  if (selectedNodeId && baseGraph.nodes.some((node) => node.id === selectedNodeId)) {
+    highlightedNodeIds.add(selectedNodeId);
+  }
+
+  const nodes = baseGraph.nodes.filter((node) => visibleNodeIds.has(node.id));
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const links = baseGraph.links.filter((link) => nodeIds.has(link.source) && nodeIds.has(link.target));
+  return {
+    graphModel: { ...baseGraph, nodes, links },
+    highlightedNodeIds,
+    summary: summaryParts.join(" ")
+  };
+}
+
+/**
+ * Updates history buttons.
+ *
+ * @returns {void}
+ */
+function renderNavigationState() {
+  navBackButton.disabled = selectionIndex <= 0;
+  navForwardButton.disabled = selectionIndex < 0 || selectionIndex >= selectionHistory.length - 1;
+}
+
+/**
+ * Renders the graph with current filters.
+ *
+ * @returns {void}
+ */
+function renderGraph() {
+  const { graphModel, highlightedNodeIds, summary } = buildDisplayGraphState();
+  graphSummary.textContent = summary;
+  renderRadialGraph(graphRoot, graphModel, setContextForNode, { selectedNodeId, highlightedNodeIds });
+  renderNavigationState();
+}
+
+/**
  * Updates the context panel for a selected node.
  *
  * @param {string} nodeId
  * @returns {void}
  */
-function setContextForNode(nodeId) {
+function setContextForNode(nodeId, skipHistory = false) {
   if (!currentState) {
     return;
   }
+  const node = getNodeById(nodeId);
+  if (!node) {
+    return;
+  }
+  selectedNodeId = nodeId;
+  if (!skipHistory) {
+    selectionHistory = selectionHistory.slice(0, selectionIndex + 1);
+    selectionHistory.push(nodeId);
+    selectionIndex = selectionHistory.length - 1;
+  } else if (selectionIndex === -1) {
+    selectionHistory = [nodeId];
+    selectionIndex = 0;
+  }
   const context = buildNodeContext(currentState.graphModel, currentState.parsed, currentState.analysis, nodeId);
   renderContextPanel(contextPanel, context);
+  renderGraph();
 }
 
 /**
@@ -290,7 +424,45 @@ function resetPendingSource() {
  */
 function rerenderGraph() {
   if (currentState) {
-    renderRadialGraph(graphRoot, currentState.graphModel, setContextForNode);
+    renderGraph();
+  }
+}
+
+/**
+ * Navigates backward or forward through selected nodes.
+ *
+ * @param {number} direction
+ * @returns {void}
+ */
+function moveSelection(direction) {
+  const nextIndex = selectionIndex + direction;
+  if (nextIndex < 0 || nextIndex >= selectionHistory.length) {
+    return;
+  }
+  selectionIndex = nextIndex;
+  const nextNodeId = selectionHistory[selectionIndex];
+  const context = buildNodeContext(currentState.graphModel, currentState.parsed, currentState.analysis, nextNodeId);
+  selectedNodeId = nextNodeId;
+  renderContextPanel(contextPanel, context);
+  renderGraph();
+}
+
+/**
+ * Handles delegated panel navigation clicks.
+ *
+ * @param {MouseEvent} event
+ * @returns {void}
+ */
+function handlePanelNavigation(event) {
+  const button = event.target.closest("[data-node-id]");
+  if (!button) {
+    return;
+  }
+  const nodeId = button.dataset.secondaryNodeId && selectedNodeId === button.dataset.nodeId
+    ? button.dataset.secondaryNodeId
+    : button.dataset.nodeId;
+  if (nodeId) {
+    setContextForNode(nodeId);
   }
 }
 
@@ -305,6 +477,23 @@ loadSampleButton.addEventListener("click", loadSample);
 loadDocsButton.addEventListener("click", handleGoogleDocsLoad);
 fileInput.addEventListener("change", handleFileSelection);
 input.addEventListener("input", resetPendingSource);
+graphSearchInput.addEventListener("input", (event) => {
+  graphSearchTerm = event.target.value.trim();
+  renderGraph();
+});
+clearSearchButton.addEventListener("click", () => {
+  graphSearchTerm = "";
+  graphSearchInput.value = "";
+  renderGraph();
+});
+contradictionsOnlyInput.addEventListener("change", (event) => {
+  contradictionsOnly = event.target.checked;
+  renderGraph();
+});
+navBackButton.addEventListener("click", () => moveSelection(-1));
+navForwardButton.addEventListener("click", () => moveSelection(1));
+contextPanel.addEventListener("click", handlePanelNavigation);
+issuesPanel.addEventListener("click", handlePanelNavigation);
 window.addEventListener("resize", rerenderGraph);
 
 document.querySelector("#app-title").textContent = COPY.appTitle;

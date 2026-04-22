@@ -137,7 +137,8 @@ function buildPositions(root) {
  * @param {Map<string, {x: number, y: number}>} positions
  * @returns {void}
  */
-function renderLinkLayer(svg, graphModel, positions) {
+function renderLinkLayer(svg, graphModel, positions, options) {
+  const activeNodeIds = options.highlightedNodeIds || new Set();
   svg.append("g")
     .attr("fill", "none")
     .selectAll("line.graph-link")
@@ -149,6 +150,12 @@ function renderLinkLayer(svg, graphModel, positions) {
     .attr("x2", (link) => positions.get(link.target).x)
     .attr("y2", (link) => positions.get(link.target).y)
     .attr("stroke", getLinkStroke)
+    .attr("stroke-opacity", (link) => {
+      if (!activeNodeIds.size) {
+        return 1;
+      }
+      return activeNodeIds.has(link.source) || activeNodeIds.has(link.target) ? 1 : 0.18;
+    })
     .attr("stroke-dasharray", (link) => link.kind === EDGE_KINDS.CONTRADICTION ? "6 4" : null)
     .attr("stroke-width", (link) => Math.max(0.8, link.weight * (link.kind === EDGE_KINDS.CONTRADICTION ? 5 : 3.6)));
 }
@@ -162,7 +169,9 @@ function renderLinkLayer(svg, graphModel, positions) {
  * @param {(nodeId: string) => void} onNodeSelect
  * @returns {object}
  */
-function renderNodeLayer(svg, graphModel, positions, onNodeSelect) {
+function renderNodeLayer(svg, graphModel, positions, onNodeSelect, options) {
+  const activeNodeIds = options.highlightedNodeIds || new Set();
+  const selectedNodeId = options.selectedNodeId;
   return svg.append("g")
     .selectAll("circle.graph-node")
     .data(graphModel.nodes.filter((node) => positions.has(node.id)))
@@ -172,8 +181,14 @@ function renderNodeLayer(svg, graphModel, positions, onNodeSelect) {
     .attr("cy", (node) => positions.get(node.id).y)
     .attr("r", (node) => getRadiusByType(node.type))
     .attr("fill", (node) => getColorByType(node.type))
-    .attr("stroke", "#fff9ef")
-    .attr("stroke-width", 1.3)
+    .attr("stroke", (node) => node.id === selectedNodeId ? "#1f1b16" : "#fff9ef")
+    .attr("stroke-width", (node) => node.id === selectedNodeId ? 2.8 : 1.3)
+    .attr("opacity", (node) => {
+      if (!activeNodeIds.size) {
+        return 1;
+      }
+      return activeNodeIds.has(node.id) ? 1 : 0.22;
+    })
     .style("cursor", "pointer")
     .on("click", (_, node) => onNodeSelect(node.id))
     .on("mouseenter", function onEnter(_, node) {
@@ -192,7 +207,8 @@ function renderNodeLayer(svg, graphModel, positions, onNodeSelect) {
  * @param {Map<string, {x: number, y: number}>} positions
  * @returns {void}
  */
-function renderLabelLayer(svg, graphModel, positions) {
+function renderLabelLayer(svg, graphModel, positions, options) {
+  const activeNodeIds = options.highlightedNodeIds || new Set();
   svg.append("g")
     .selectAll("text.graph-label")
     .data(graphModel.nodes.filter((node) => positions.has(node.id) && node.type !== NODE_TYPES.DOCUMENT))
@@ -205,6 +221,12 @@ function renderLabelLayer(svg, graphModel, positions) {
     .attr("text-anchor", (node) => positions.get(node.id).x >= 0 ? "start" : "end")
     .style("font-size", (node) => node.type === NODE_TYPES.SENTENCE ? "11px" : "10px")
     .style("fill", "#594730")
+    .style("opacity", (node) => {
+      if (!activeNodeIds.size) {
+        return 1;
+      }
+      return activeNodeIds.has(node.id) ? 1 : 0.18;
+    })
     .style("pointer-events", "none")
     .text((node) => node.label);
 }
@@ -234,7 +256,7 @@ function selectDefaultNode(nodeSelection, graphModel, onNodeSelect) {
  * @param {(nodeId: string) => void} onNodeSelect
  * @returns {void}
  */
-export function renderRadialGraph(container, graphModel, onNodeSelect) {
+export function renderRadialGraph(container, graphModel, onNodeSelect, options = {}) {
   container.replaceChildren();
   if (!graphModel || graphModel.nodes.length === 0) {
     renderEmptyState(container);
@@ -247,9 +269,11 @@ export function renderRadialGraph(container, graphModel, onNodeSelect) {
   d3.cluster().size([2 * Math.PI, Math.min(width, height) / 2 - 58])(root);
   const svg = createSvg(width, height);
   const positions = buildPositions(root);
-  renderLinkLayer(svg, graphModel, positions);
-  const nodeSelection = renderNodeLayer(svg, graphModel, positions, onNodeSelect);
-  renderLabelLayer(svg, graphModel, positions);
+  renderLinkLayer(svg, graphModel, positions, options);
+  const nodeSelection = renderNodeLayer(svg, graphModel, positions, onNodeSelect, options);
+  renderLabelLayer(svg, graphModel, positions, options);
   container.appendChild(svg.node());
-  selectDefaultNode(nodeSelection, graphModel, onNodeSelect);
+  if (!options.selectedNodeId) {
+    selectDefaultNode(nodeSelection, graphModel, onNodeSelect);
+  }
 }

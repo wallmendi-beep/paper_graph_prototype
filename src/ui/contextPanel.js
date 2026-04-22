@@ -30,7 +30,21 @@ function appendListSection(container, title, items, className = "") {
   heading.textContent = title;
   items.forEach((item) => {
     const listItem = document.createElement("li");
-    listItem.textContent = item;
+    if (typeof item === "string") {
+      listItem.textContent = item;
+    } else {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `context-action ${item.tone === "danger" ? "danger" : ""}`;
+      button.textContent = item.label;
+      if (item.nodeId) {
+        button.dataset.nodeId = item.nodeId;
+      }
+      if (item.secondaryNodeId) {
+        button.dataset.secondaryNodeId = item.secondaryNodeId;
+      }
+      listItem.appendChild(button);
+    }
     list.appendChild(listItem);
   });
   section.append(heading, list);
@@ -93,11 +107,24 @@ export function renderContextPanel(container, context) {
  * @returns {void}
  */
 export function renderIssuePanel(container, analysis) {
-  const isolated = analysis.connectivity.isolatedSentences.map((label) => `${label} has no strong sentence link.`);
-  const bridges = analysis.connectivity.bridgeSentences.map((item) => `${item.label} connects to ${item.linkCount} strong sentence links.`);
+  const isolated = analysis.connectivity.isolatedSentences.map((label) => ({
+    nodeId: `sentence:${Number(label.replace("S", "")) - 1}`,
+    label: `${label} has no strong sentence link.`,
+    tone: "neutral"
+  }));
+  const bridges = analysis.connectivity.bridgeSentences.map((item) => ({
+    nodeId: item.nodeId,
+    label: `${item.label} connects to ${item.linkCount} strong sentence links.`,
+    tone: "neutral"
+  }));
   const contradictions = analysis.contradictionLinks
     .slice(0, 8)
-    .map((link) => `${link.source.replace("sentence:", "S")} vs ${link.target.replace("sentence:", "S")} (${link.reasons.join(", ")})`);
+    .map((link) => ({
+      nodeId: link.source,
+      secondaryNodeId: link.target,
+      label: `${link.source.replace("sentence:", "S")} vs ${link.target.replace("sentence:", "S")} (${link.reasons.join(", ")})`,
+      tone: "danger"
+    }));
   clearContainer(container);
   appendListSection(container, "Potential contradictions", contradictions, "context-issues");
   appendListSection(container, "Bridge sentences", bridges);

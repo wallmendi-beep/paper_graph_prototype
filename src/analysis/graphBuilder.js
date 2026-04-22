@@ -73,7 +73,18 @@ function buildDocumentContext(parsed, analysis) {
       `Sentences ${parsed.sentenceNodes.length}`,
       `Tokens ${parsed.tokenNodes.length}`,
       `Contradictions ${analysis.contradictionLinks.length}`
-    ]
+    ],
+    connectivity: analysis.connectivity.bridgeSentences.slice(0, 5).map((item) => ({
+      nodeId: item.nodeId,
+      label: `${item.label} ties together ${item.linkCount} strong links.`,
+      tone: "neutral"
+    })),
+    contradictions: analysis.contradictionLinks.slice(0, 4).map((link) => ({
+      nodeId: link.source,
+      secondaryNodeId: link.target,
+      label: `${link.source.replace("sentence:", "S")} vs ${link.target.replace("sentence:", "S")} [${link.reasons.join(", ")}]`,
+      tone: "danger"
+    }))
   };
 }
 
@@ -120,11 +131,19 @@ function buildSentenceContext(node, analysis) {
     .map((link) => `${link.token} (${link.weight})`);
   const connectivity = getSentenceDetailList(analysis.sentenceLinks, node.id, 4, (link) => {
     const relatedId = getRelatedSentenceId(link, node.id);
-    return `${relatedId.replace("sentence:", "S")} (${link.weight})`;
+    return {
+      nodeId: relatedId,
+      label: `${relatedId.replace("sentence:", "S")} shared concepts ${link.sharedTokens.slice(0, 3).join(", ") || "n/a"} (${link.weight})`,
+      tone: "neutral"
+    };
   });
   const contradictions = getSentenceDetailList(analysis.contradictionLinks, node.id, 4, (link) => {
     const relatedId = getRelatedSentenceId(link, node.id);
-    return `Conflict ${relatedId.replace("sentence:", "S")} [${link.reasons.join(", ")}]`;
+    return {
+      nodeId: relatedId,
+      label: `Conflict ${relatedId.replace("sentence:", "S")} [${link.reasons.join(", ")}]`,
+      tone: "danger"
+    };
   });
   return {
     title: node.label,
@@ -148,12 +167,16 @@ function buildTokenContext(node, analysis) {
     .filter((link) => link.target === node.id)
     .sort((left, right) => right.weight - left.weight)
     .slice(0, 6)
-    .map((link) => `${link.source.replace("sentence:", "S")} (${link.occurrencesInSentence})`);
+    .map((link) => ({
+      nodeId: link.source,
+      label: `${link.source.replace("sentence:", "S")} mentions this concept ${link.occurrencesInSentence} time(s).`,
+      tone: "neutral"
+    }));
   return {
     title: node.label,
     subtitle: "Shared concept",
     body: `This concept appears in ${node.sentenceIndexes.length} sentence(s) and highlights recurring evidence in the document.`,
-    tags: linkedSentences,
+    tags: linkedSentences.map((item) => item.label.replace(" mentions this concept ", " ")),
     connectivity: linkedSentences,
     contradictions: []
   };
